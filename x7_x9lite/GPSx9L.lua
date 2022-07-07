@@ -46,6 +46,7 @@ local gpsaltId = 0
 local gpsFIX = 0
 local gpsDtH = 0
 local gpsTotalDist = 0
+local gpsHd=0
 local log_write_wait_time = 10
 local old_time_write = 0
 local update = true
@@ -131,6 +132,36 @@ local function calc_Distance(LatPos, LonPos, LatHome, LonHome)
 	return rnd(dist,2)
 end
 
+--[	####################################################################
+--[	calculate bearing
+--[	####################################################################
+
+local function getDegreesBetweenCoordinates(LatFrom, LonFrom, LatTo, LonTo)
+  -- Returns the angle in degrees between two GPS positions
+  -- Latitude and Longitude in decimal degrees
+  -- E.g. 40.1234, -75.4523342
+  -- http://www.igismap.com/formula-to-find-bearing-or-heading-angle-between-two-points-latitude-longitude/
+  -- A: LatFrom, LonFrom
+  -- B: LatTo, LonTo
+  --LatFrom = 39.099912
+  --LonFrom = -94.581213
+  --LatTo = 38.627089
+  --LonTo = -90.200203
+  -- correct answer is X  = 0.05967668696, Y = -0.00681261948, β = 96.51°
+  local X =  math.cos(math.rad(LatTo)) * math.sin(math.rad(LonTo-LonFrom))
+
+  local Y = (math.cos(math.rad(LatFrom)) * math.sin(math.rad(LatTo))) - (
+  math.sin(math.rad(LatFrom)) * math.cos(math.rad(LatTo)) * math.cos(math.rad(LonTo-LonFrom)))
+
+  local Bearing = math.deg(math.atan2(math.rad(X), math.rad(Y)))
+
+  if Bearing < 0 then
+    return 360 + Bearing
+  else
+    return Bearing
+  end
+end
+
 local function init()  				
 	gpsId = getTelemetryId("GPS")
 	--number of satellites crossfire
@@ -208,6 +239,10 @@ local function background()
 			--distance to home
 			gpsDtH = rnd(calc_Distance(gpsLAT, gpsLON, gpsLAT_H, gpsLON_H),2)			
 			gpsDtH = string.format("%.2f",gpsDtH)		
+
+			--heading to aircraft relative to the north
+			gpsHd = rnd(getDegreesBetweenCoordinates(gpsLAT_H, gpsLON_H, gpsLAT, gpsLON),2)			
+			gpsHd = string.format("%.2f",gpsHd)		
 			
 			--total distance traveled					
 			if (gpsPrevLAT ~= 0) and  (gpsPrevLON ~= 0) then	
@@ -274,7 +309,8 @@ local function run(event)
 		lcd.drawText(22,14, gpsSATS, SMLSIZE)		
 		lcd.drawText(60,10, gpsDtH, SMLSIZE)
 		lcd.drawText(73,20, "km"  , SMLSIZE)
-		lcd.drawText(103,10, gpsTotalDist, SMLSIZE)
+--		lcd.drawText(103,10, gpsTotalDist, SMLSIZE)
+		lcd.drawText(103,10, gpsHd, SMLSIZE)
 		lcd.drawText(116,20, "km"  , SMLSIZE)
 		
 		lcd.drawText(20,33, gpsLAT_H .. ", " .. gpsLON_H, SMLSIZE)
